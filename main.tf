@@ -25,77 +25,40 @@ module "asg_name" {
   }
 }
 
-resource "aws_launch_template" "main" {
+resource "aws_launch_configuration" "main" {
   name = "${module.launch_template_name.name}"
 
   image_id = "${data.aws_ami.latest_service_image.id}"
 
-  iam_instance_profile {
-    name = "${var.instance_profile}"
-  }
-
-  credit_specification {
-    cpu_credits = "${var.cpu_credits}"
-  }
+  iam_instance_profile   = "${var.instance_profile}"
+  instance_type          = "${var.instance_type}"
 
   key_name               = "${var.key_name}"
-  vpc_security_group_ids = ["${var.security_groups}"]
-  user_data              = "${base64encode(var.user_data)}"
+  security_groups        = ["${var.security_groups}"]
+  user_data              = "${var.user_data}"
 
-  monitoring {
-    enabled = "${var.monitoring}"
+  enable_monitoring      = "${var.monitoring}"
+  ebs_optimized          = "${var.ebs_optimized}"
+
+  root_block_device =
+  {
+    volume_size           = "10"
+    volume_type           = "${var.volume_type}"
+    delete_on_termination = "${var.delete_on_termination}"
   }
 
-  ebs_optimized = "${var.ebs_optimized}"
+  ebs_block_device = [
+  {
+    device_name           = "/dev/xvdb"
+    volume_size           = "500"
+    volume_type           = "gp2"
+    delete_on_termination = "true"
+  }]
 
-  block_device_mappings {
-    device_name = "/dev/sda1"
-
-    ebs {
-      volume_size           = "${var.volume_size}"
-      volume_type           = "${var.volume_type}"
-      delete_on_termination = "${var.delete_on_termination}"
-    }
-  }
-
-  tags = {
-    Name          = "${module.launch_template_name.name}"
-    Service       = "${var.service_name}"
-    ProductDomain = "${var.product_domain}"
-    Environment   = "${var.environment}"
-    ManagedBy     = "terraform"
-  }
-
-  tag_specifications = [
-    {
-      resource_type = "instance"
-
-      tags = {
-        Name          = "${var.service_name}-${var.cluster_role}"
-        Service       = "${var.service_name}"
-        Cluster       = "${var.service_name}-${var.cluster_role}"
-        ProductDomain = "${var.product_domain}"
-        Application   = "${var.application}"
-        Environment   = "${var.environment}"
-        Description   = "${var.description}"
-        ManagedBy     = "terraform"
-      }
-    },
-    {
-      resource_type = "volume"
-
-      tags = {
-        Service       = "${var.service_name}"
-        ProductDomain = "${var.product_domain}"
-        Environment   = "${var.environment}"
-        ManagedBy     = "terraform"
-      }
-    },
-  ]
 }
 
 resource "aws_autoscaling_group" "main" {
-  name_prefix               = "${module.asg_name.name}"
+  name                      = "${module.asg_name.name}"
   max_size                  = "${var.asg_max_capacity}"
   min_size                  = "${var.asg_min_capacity}"
   default_cooldown          = "${var.asg_default_cooldown}"
@@ -105,52 +68,43 @@ resource "aws_autoscaling_group" "main" {
   target_group_arns         = ["${var.asg_lb_target_group_arns}"]
   load_balancers            = ["${var.asg_clb_names}"]
   termination_policies      = ["${var.asg_termination_policies}"]
-
-  mixed_instances_policy {
-    launch_template {
-      launch_template_specification {
-        launch_template_id = "${aws_launch_template.main.id}"
-        version            = "$Latest"
-      }
-
-      override = [
-        "${var.launch_template_overrides}",
-      ]
-    }
-
-    instances_distribution = ["${var.mixed_instances_distribution}"]
-  }
+  launch_configuration      = "${aws_launch_configuration.main.name}"
 
   tags = [
     {
       key                 = "Name"
       value               = "${module.asg_name.name}"
-      propagate_at_launch = false
+      propagate_at_launch = true
     },
     {
       key                 = "Service"
       value               = "${var.service_name}"
-      propagate_at_launch = false
+      propagate_at_launch = true
     },
     {
       key                 = "ProductDomain"
       value               = "${var.product_domain}"
-      propagate_at_launch = false
+      propagate_at_launch = true
     },
     {
       key                 = "Environment"
       value               = "${var.environment}"
-      propagate_at_launch = false
+      propagate_at_launch = true
     },
     {
       key                 = "Description"
       value               = "ASG of the ${var.service_name}-${var.cluster_role} cluster"
-      propagate_at_launch = false
+      propagate_at_launch = true
     },
     {
       key                 = "ManagedBy"
       value               = "terraform"
-      propagate_at_launch = false
+      propagate_at_launch = true
+    },
+    {
+      key                 = "keep_alive"
+      value               = "true"
+      propagate_at_launch = true
     },
     "${var.asg_tags}",
   ]

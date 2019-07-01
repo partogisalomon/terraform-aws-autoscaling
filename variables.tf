@@ -60,7 +60,7 @@ variable "asg_max_capacity" {
 
 variable "asg_health_check_type" {
   type        = "string"
-  default     = "ELB"
+  default     = "EC2"
   description = "Controls how ASG health checking is done"
 }
 
@@ -163,6 +163,11 @@ variable "instance_profile" {
   description = "The spawned instances will have this IAM profile"
 }
 
+variable "instance_type" {
+  type        = "string"
+  description = "Instance Type"
+}
+
 variable "key_name" {
   type        = "string"
   default     = ""
@@ -206,7 +211,7 @@ variable "user_data" {
 variable "volume_size" {
   description = "The size of the volume in gigabytes"
   type        = "string"
-  default     = "8"
+  default     = "10"
 }
 
 variable "volume_type" {
