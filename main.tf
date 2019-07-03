@@ -88,7 +88,7 @@ resource "aws_autoscaling_group" "main" {
     },
     {
       key                 = "Cluster"
-      value               = ${var.service_name}-${var.cluster_role}"
+      value               = "${var.service_name}-${var.cluster_role}"
       propagate_at_launch = true
     },
     {
